@@ -26,7 +26,7 @@ async function listDb() {
   console.log(keyPattern.value)
   return await invoke('list_db')
       .then(response => {
-        keys.value = response;
+        // keys.value = response;
         console.log(response)
         console.log(keys.value)
       })

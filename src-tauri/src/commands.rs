@@ -1,26 +1,50 @@
 use crate::{
-    config::{Database, NewDatabaseCmd},
+    database::{Database, DatabaseDto},
     Core,
 };
 use tauri::State;
 
 #[tauri::command]
-pub fn list_db(core: State<'_, Core>, _q: Option<String>) -> Option<Vec<Database>> {
+pub fn list_db<'a>(core: State<'_, Core>, q: Option<&str>) -> Option<Vec<Database>> {
     println!("List db");
-    let config = core.config.lock().unwrap();
-    let dbs = config.clone().databases;
-    println!("current dbs: {:?}", dbs);
-    dbs
+
+    let db = core.db.lock().unwrap().clone();
+    db.list(q)
 }
 
 #[tauri::command]
-pub fn add_db(core: State<'_, Core>, db: NewDatabaseCmd) {
-    let mut config = core.config.lock().unwrap();
-    config.add_db(db);
+pub fn add_db(core: State<'_, Core>, db: DatabaseDto) {
+    core.db.lock().unwrap().add(db);
 }
 
 #[tauri::command]
-pub fn remove_db(core: State<'_, Core>, id:&str) {
-    let mut config = core.config.lock().unwrap();
-    config.remove_db(id);
+pub fn remove_db(core: State<'_, Core>, id: &str) {
+    core.db.lock().unwrap().remove(id);
+}
+
+#[tauri::command]
+pub fn update_db(core: State<'_, Core>, id: &str, db: DatabaseDto) {
+    println!("update db: {:?}", db);
+    core.db.lock().unwrap().update(id, db);
+}
+
+#[tauri::command]
+pub fn get_db(core: State<'_, Core>, id: &str) -> Option<Database> {
+    let db = core.db.lock().unwrap().clone();
+    db.get(id)
+}
+
+#[tauri::command]
+pub fn ping(core: State<'_, Core>, id: &str) -> String {
+    let db = core.db.lock().unwrap().clone();
+    let db = db.get(id);
+
+    let conn = db
+        .map(|db| format!("redis://{}/", db.host))
+        .map(|param| redis::Client::open(param).unwrap())
+        .unwrap();
+
+    let mut con = conn.get_connection().unwrap();
+    let cmd = redis::cmd("PING");
+    cmd.query(&mut con).unwrap()
 }

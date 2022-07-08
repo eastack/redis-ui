@@ -4,21 +4,21 @@
 )]
 
 mod commands;
-mod config;
+mod database;
 use redis::Commands;
+use redis::Connection;
 
 use std::sync::{Arc, Mutex};
 
-use config::Config;
+use database::Databases;
 use tauri::{CustomMenuItem, Menu, Submenu};
 
-use commands::add_db;
-use commands::list_db;
-use commands::remove_db;
+use commands::*;
 
 #[derive(Clone)]
 pub struct Core {
-    pub config: Arc<Mutex<Config>>,
+    pub db: Arc<Mutex<Databases>>,
+    pub conn: Arc<Mutex<Option<Connection>>>,
 }
 
 fn main() {
@@ -28,13 +28,13 @@ fn main() {
     let submenu = Submenu::new("File", Menu::new().add_item(exit));
     let menu = Menu::new().add_submenu(submenu);
 
-    let config = Config::new("/tmp/redis-ui-config.json");
-    println!("current config is: {config:?}");
+    let dbs = Databases::new("/tmp/redis-ui-config.json");
 
     tauri::Builder::default()
         .menu(menu)
         .manage(Core {
-            config: Arc::new(Mutex::new(config)),
+            db: Arc::new(Mutex::new(dbs)),
+            conn: Default::default(),
         })
         .on_menu_event(move |event| match event.menu_item_id() {
             "exit" => {
@@ -46,18 +46,10 @@ fn main() {
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
-            ping, keys, list_db, add_db, remove_db
+            ping, keys, add_db, remove_db, update_db, list_db, get_db
         ])
         .run(context)
         .expect("error while running tauri application");
-}
-
-#[tauri::command]
-fn ping() -> String {
-    let client = redis::Client::open("redis://127.0.0.1/").unwrap();
-    let mut con = client.get_connection().unwrap();
-    let cmd = redis::cmd("PING");
-    cmd.query(&mut con).unwrap()
 }
 
 #[tauri::command]

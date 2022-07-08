@@ -21,6 +21,7 @@ tauri = { version = "1.0.0", features = ["api-all"] }
 redis = "0.21.5"
 ts-rs = "6.2.0"
 uuid = "1.1.2"
+pinyin = "0.9.0"
 
 [features]
 # by default Tauri runs in production mode
