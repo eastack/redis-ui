@@ -1,3 +1,4 @@
+use pinyin::{Pinyin, ToPinyin};
 use std::{
     fs::File,
     io::{BufReader, BufWriter},
@@ -10,33 +11,26 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct DatabaseDto {
-    pub name: String,
-    pub comment: String,
-    pub color: String,
     pub host: String,
     pub port: u16,
-    pub auth: RedisAuth,
-    pub db: u8,
+    pub alias: String,
+    pub db: u16,
+    pub username: String,
+    pub password: String,
+    pub tls: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Database {
     pub id: String,
-    pub name: String,
-    pub comment: String,
-    pub color: String,
     pub host: String,
     pub port: u16,
-    pub auth: RedisAuth,
-    pub db: u8,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub enum RedisAuth {
-    None,
-    Password { username: String, password: String },
+    pub alias: String,
+    pub db: u16,
+    pub username: String,
+    pub password: String,
+    pub tls: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -51,7 +45,7 @@ impl Databases {
         let file = BufReader::new(file);
         Databases {
             filepath: filename.to_string(),
-            dbs: serde_json::from_reader::<_, Vec<Database>>(file).unwrap_or(vec![])
+            dbs: serde_json::from_reader::<_, Vec<Database>>(file).unwrap_or(vec![]),
         }
     }
 
@@ -60,13 +54,13 @@ impl Databases {
 
         let db = Database {
             id: Uuid::new_v4().to_string(),
-            name: cmd.name,
-            comment: cmd.comment,
-            color: cmd.color,
             host: cmd.host,
             port: cmd.port,
-            auth: cmd.auth,
+            alias: cmd.alias,
             db: cmd.db,
+            username: cmd.username,
+            password: cmd.password,
+            tls: cmd.tls,
         };
 
         self.dbs.push(db);
@@ -85,12 +79,9 @@ impl Databases {
     pub fn update(&mut self, id: &str, cmd: DatabaseDto) {
         println!("Update db");
         if let Some(db) = self.dbs.iter_mut().find(|db| db.id == id) {
-            db.name = cmd.name;
-            db.comment = cmd.comment;
-            db.color = cmd.color;
             db.host = cmd.host;
             db.port = cmd.port;
-            db.auth = cmd.auth;
+            db.alias = cmd.alias;
             db.db = cmd.db;
         }
 
@@ -99,7 +90,22 @@ impl Databases {
 
     pub fn list(self, q: Option<&str>) -> Option<Vec<Database>> {
         let res = match q {
-            Some(q) => self.dbs.into_iter().filter(|db: &Database| db.name.contains(q)).collect(),
+            Some(q) => self
+                .dbs
+                .into_iter()
+                .filter(|db: &Database| {
+                    db.alias
+                        .as_str()
+                        .to_pinyin()
+                        .flatten()
+                        .map(Pinyin::first_letter)
+                        .collect::<Vec<&str>>()
+                        .join("")
+                        .contains(q)
+                        || db.host.contains(q)
+                        || db.port.to_string().contains(q)
+                })
+                .collect(),
             None => self.dbs.into_iter().collect(),
         };
         Some(res)

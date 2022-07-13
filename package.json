@@ -8,8 +8,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heroicons/vue": "^1.0.6",
     "@tauri-apps/api": "^1.0.1",
-    "@types/lodash": "^4.14.182",
+    "@vueuse/core": "^8.9.2",
     "vue": "^3.2.25",
     "vue-router": "4"
   },

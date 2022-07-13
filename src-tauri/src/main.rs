@@ -7,6 +7,8 @@ mod commands;
 mod database;
 use redis::Commands;
 use redis::Connection;
+use tauri::LogicalSize;
+use tauri::Size;
 
 use std::sync::{Arc, Mutex};
 
@@ -22,13 +24,12 @@ pub struct Core {
 }
 
 fn main() {
-    let context = tauri::generate_context!();
+    let dbs = Databases::new("/tmp/redis-ui-config.json");
 
+    let context = tauri::generate_context!();
     let exit = CustomMenuItem::new("exit".to_string(), "Exit");
     let submenu = Submenu::new("File", Menu::new().add_item(exit));
     let menu = Menu::new().add_submenu(submenu);
-
-    let dbs = Databases::new("/tmp/redis-ui-config.json");
 
     tauri::Builder::default()
         .menu(menu)
@@ -40,13 +41,13 @@ fn main() {
             "exit" => {
                 std::process::exit(0);
             }
-            "exit_new_db" => {
-                event.window().hide().unwrap();
+            "close_window" => {
+                event.window().close().unwrap();
             }
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
-            ping, keys, add_db, remove_db, update_db, list_db, get_db
+            ping, keys, add_db, remove_db, update_db, list_db, get_db, open_docs
         ])
         .run(context)
         .expect("error while running tauri application");
@@ -59,4 +60,36 @@ fn keys(key_pattern: &str) -> Vec<String> {
     let keys: Vec<String> = con.keys(key_pattern.to_string()).unwrap();
     println!("current pattern: {key_pattern} current keys: {keys:?}");
     keys
+}
+
+#[tauri::command]
+async fn open_docs(handle: tauri::AppHandle) {
+    let exit = CustomMenuItem::new("close_window".to_string(), "Close Window");
+    let submenu = Submenu::new("File", Menu::new().add_item(exit));
+    let menu = Menu::new().add_submenu(submenu);
+
+    let window = tauri::WindowBuilder::new(
+        &handle,
+        "New", /* the unique window label */
+        tauri::WindowUrl::External("http://localhost:3000/db/create".parse().unwrap()),
+    )
+    .center()
+    .menu(menu)
+    .build()
+    .unwrap();
+
+    window
+        .set_min_size(Some(Size::Logical(LogicalSize {
+            width: 61_f64,
+            height: 100_f64,
+        })))
+        .unwrap();
+
+    window
+        .set_size(Size::Logical(LogicalSize {
+            width: 618_f64,
+            height: 1000_f64,
+        }))
+        .unwrap();
+    //window.set_resizable(false).unwrap();
 }

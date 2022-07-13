@@ -1,24 +1,67 @@
 import {createApp} from 'vue'
 import App from './App.vue'
-import NewDb from './components/NewDb.vue'
+import CreateDb from './components/CreateDb.vue'
 import DbList from './components/DbList.vue'
 import EditDb from './components/EditDb.vue'
-import Test from './components/Test.vue'
+import Dashboard from './components/Dashboard.vue'
 import './index.css'
-import {createRouter, createWebHistory} from "vue-router";
+import {createRouter, createWebHashHistory, RouteParams, RouteRecordRaw} from "vue-router";
 
-const routes: any[] = [
-    {path: '/', component: DbList},
-    {path: '/new-db', component: NewDb},
-    {path: '/db-list', component: DbList},
-    {path: '/edit-db/:id', component: EditDb},
-    {path: '/test', component: Test},
-]
+export type AppRouteNames =
+    | 'index'
+    | 'create-db'
+    | 'edit-db'
+    | 'dashboard'
+
+export const routes: RouteRecordRaw[] = [
+    {
+        name: 'index',
+        path: '/',
+        component: DbList
+    },
+    {
+        name: 'create-db',
+        path: '/database/create',
+        component: CreateDb
+    },
+    {
+        name: 'edit-db',
+        path: '/database/:id/edit',
+        component: EditDb,
+    },
+    {
+        name: 'dashboard',
+        path: '/database/:id/dashboard',
+        component: Dashboard,
+    },
+];
 
 let router = createRouter({
-    history: createWebHistory(),
+    history: createWebHashHistory(),
     routes: routes
 })
+
+interface Todo {
+    title: string;
+    description: string;
+    completed: boolean;
+}
+
+type TodoPreview = Pick<Todo, "title" | "description">;
+
+const todo: TodoPreview = {
+    title: "Clean room",
+    description: "false",
+};
+
+
+export function routerPush(name: AppRouteNames, params?: RouteParams): ReturnType<typeof router.push> {
+    if (params !== undefined) {
+        return router.push({name, params})
+    } else {
+        return router.push({name})
+    }
+}
 
 createApp(App)
     .use(router)

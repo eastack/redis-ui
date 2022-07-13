@@ -6,7 +6,7 @@ use tauri::State;
 
 #[tauri::command]
 pub fn list_db<'a>(core: State<'_, Core>, q: Option<&str>) -> Option<Vec<Database>> {
-    println!("List db");
+    println!("List db {}", q);
 
     let db = core.db.lock().unwrap().clone();
     db.list(q)
